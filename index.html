@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Store Locator</title>
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+        #map {
+            height: 100%;
+            width: 100%;
+            min-height: 400px;
+        }
+        .modal-backdrop {
+            backdrop-filter: blur(2px);
+        }
+        .store-list::-webkit-scrollbar {
+            width: 5px;
+        }
+        .store-list::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <header class="bg-white shadow-sm">
+        <nav class="container mx-auto px-4 py-3">
+            <div class="flex items-center justify-between">
+                <div class="text-xl font-bold">Logo</div>
+                
+                <!-- Store Selector Dropdown -->
+                <div class="relative">
+                    <button id="storeDropdown" class="flex items-center space-x-2 px-4 py-2 rounded-lg hover:bg-gray-100">
+                        <i class="bi bi-geo-alt"></i>
+                        <span id="selectedStoreName">497 Mavis Road</span>
+                        <i class="bi bi-chevron-down ml-2"></i>
+                    </button>
+                    
+                    <div id="storeDropdownContent" class="hidden absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg p-4 z-10">
+                        <div class="font-semibold">497 Mavis Road</div>
+                        <div class="text-gray-600 text-sm mt-1">123 Mavis Road, Mississauga, ON L5C 1T8</div>
+                        <button id="changeStore" class="mt-3 w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                            Change Store
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <!-- Store Selection Modal -->
+    <div id="storeModal" class="hidden fixed inset-0 z-50">
+        <div class="modal-backdrop absolute inset-0 bg-black bg-opacity-80"></div>
+        <div class="absolute inset-0 flex items-center justify-center p-4">
+            <div class="bg-white rounded-lg w-full max-w-6xl">
+                <!-- Modal Header -->
+                <div class="flex items-center justify-between p-4 border-b">
+                    <h2 class="text-xl font-semibold">Select my preferred store</h2>
+                    <button id="closeModal" class="text-gray-500 hover:text-gray-700">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
+
+                <!-- Search Bar -->
+                <div class="p-4">
+                    <div class="relative">
+                        <input type="text" placeholder="Search by city, postal code or store" class="w-full px-4 py-2 border rounded-lg pr-12">
+                        <button class="absolute right-2 top-1/2 -translate-y-1/2 bg-blue-600 text-white p-2 rounded-lg">
+                            <i class="bi bi-search"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Store List and Map -->
+                <div class="flex h-[500px]">
+                    <!-- Store List -->
+                    <div class="w-2/5 border-r">
+                        <div class="store-list h-full overflow-y-auto p-4">
+                            <!-- Store Items -->
+                            <div class="store-item mb-4 p-4 hover:bg-gray-50 rounded-lg cursor-pointer">
+                                <div class="font-semibold">497 Mavis Road</div>
+                                <div class="text-gray-600 text-sm">123 Mavis Road, Mississauga, ON L5C 1T8</div>
+                                <div class="text-gray-600 text-sm">905-123-4567</div>
+                                <div class="text-gray-600 text-sm">Mon-Sun: 9AM-9PM</div>
+                                <button class="mt-2 bg-blue-600 text-white px-4 py-1 rounded-lg text-sm hover:bg-blue-700">Select</button>
+                            </div>
+                            <!-- Repeat for 4 more stores -->
+                        </div>
+                    </div>
+
+                    <!-- Map -->
+                    <div class="w-3/5">
+                        <div id="map"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Dropdown functionality
+        const storeDropdown = document.getElementById('storeDropdown');
+        const storeDropdownContent = document.getElementById('storeDropdownContent');
+        const changeStoreBtn = document.getElementById('changeStore');
+        const storeModal = document.getElementById('storeModal');
+        const closeModal = document.getElementById('closeModal');
+
+        storeDropdown.addEventListener('click', () => {
+            storeDropdownContent.classList.toggle('hidden');
+        });
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!storeDropdown.contains(e.target)) {
+                storeDropdownContent.classList.add('hidden');
+            }
+        });
+
+        // Modal functionality
+        changeStoreBtn.addEventListener('click', () => {
+            storeModal.classList.remove('hidden');
+            storeDropdownContent.classList.add('hidden');
+            initMap();
+        });
+
+        closeModal.addEventListener('click', () => {
+            storeModal.classList.add('hidden');
+        });
+
+        // Initialize map
+        function initMap() {
+            const map = L.map('map').setView([43.6532, -79.3832], 11);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+
+            // Add markers for stores (example coordinates)
+            const stores = [
+                [43.6532, -79.3832],
+                [43.6632, -79.3932],
+                [43.6732, -79.4032],
+                [43.6832, -79.4132],
+                [43.6932, -79.4232]
+            ];
+
+            stores.forEach(coord => {
+                L.marker(coord).addTo(map);
+            });
+        }
+    </script>
+<script>document.body.addEventListener('wheel', e => { if (!e.ctrlKey) return; e.preventDefault(); return }, { passive: false })</script>
+	</body>
+</html>
